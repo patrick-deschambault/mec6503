@@ -1,41 +1,31 @@
-# Fichier PRRR.par: Paramètres du robot PRRR planaire
-# MEC1315 Équipe no: XX (Automne 2025)
+# Robot PRRR (rail X + bras RRR) - Proche du RRR original
+ 2.0       # L1
+ 1.5       # L2
+ 1.0       # L3
+-4.0       # xmin
+ 4.0       # xmax
+-2.0       # ymin
+ 4.5       # ymax
+ 0.0       # x0
+ 0.0       # y0
 
-# Longeurs des segments rotatifs (les mêmes que RRR)
-2.0      # L_1
-1.5      # L_2
-1.0      # L_3
+ 0.0       # d1_dep
+-3.0       # d1_min
+ 3.0       # d1_max
 
-# Limites du graphique
--2.0      # xmin
-3.0       # xmax
--1.0      # ymin
-4.0       # ymax
+ 0.757079  # t1_dep
+ 0.757079  # t2_dep
+ 0.757079  # t3_dep
 
-# Base / position initiale
-0.0       # x0 base (axe initial du rail)
-0.0       # y0 base
+ 0.0       # t1_min
+ 1.570796  # t1_max
+ 0.0       # t2_min
+ 1.570796  # t2_max
+ 0.0       # t3_min
+ 3.141592  # t3_max
 
-# Position départ des articulations
-0.0       # d0_dep : position initiale du rail (joint prismatique)
-0.757079  # t1_dep
-0.757079  # t2_dep
-0.757079  # t3_dep
-
-# Limites articulations
-0.0       # d0_min : rail minimal (0 = fixe)
-0.0       # d0_max : rail maximal (0 = fixe)
-0.0       # t1_min
-1.570796  # t1_max
-0.0       # t2_min
-1.570796  # t2_max
-0.0       # t3_min
-3.141592  # t3_max
-
-# Mur
--1.0      # xmur[0]
-1.0       # xmur[1]
-0.0       # ymur[0]
-0.0       # ymur[1]
-
-# P
+-1.0       # xmur[0]
+ 1.0       # xmur[1]
+ 0.0       # ymur[0]
+ 0.0       # ymur[1]
+ 5        # dt (msec)
