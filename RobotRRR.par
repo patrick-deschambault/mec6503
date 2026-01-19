@@ -1,0 +1,26 @@
+# Fichier Classique.par: Paramètres du robot 3R Planaire
+# MEC1315 Équipe no: XX (Automne 2025)
+ 2.0      # L_1     : longueur du segment 1
+ 1.5      # L_2     : longueur du segment 2
+ 1.0      # L_3     : longueur du segment 3
+-2.0      # xmin    : borne de gauche du graphique
+ 3.0      # xmax    : borne de droite du graphique
+-1.0      # ymin    : borne du bas du graphique
+ 4.0      # ymax    : borne du haut du graphique
+ 0.0      # x0      : Position x de l'axe theta1
+ 0.0      # y0      : Position y de l'axe theta1
+ 0.757079 # t1_dep  : Position départ de theta1
+ 0.757079 # t2_dep  : Position départ de theta2
+ 0.757079 # t3_dep  : Position départ de theta3 
+ 0.0      # t1_min  : Limite minimale de theta1
+ 1.570796 # t1_max  : Limite maximale de theta1
+ 0.0      # t2_min  : Limite minimale de theta2
+ 1.570796 # t2_max  : Limite maximale de theta2
+ 0.0      # t3_min  : Limite minimale de theta3
+ 3.141592 # t3_max  : Limite maximale de theta3 
+-1.0      # xmur[0] : Position x0 du mur
+ 1.0      # xmur[1] : Position x1 du mur
+ 0.0      # ymur[0] : Position y0 du mur
+ 0.0      # ymur[1] : Position y1 du mur
+ 25       # dt      : Pas de temps (msec.)
+ 
