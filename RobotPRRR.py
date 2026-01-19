@@ -2,141 +2,183 @@
 # -*- coding: utf-8 -*-
 """
 Fichier: RobotPRRR.py
-Cinématique du robot PRRR
+Cinématique d'un robot planaire PRRR
 - forward_all() et forward()
 - jacobian()
 - update_with_limits() et hit_limit()
 - Stratégie d'évitement Reach avec:
-    -a 0 : Orientation phi constante
-    -a 1 : Position à norme-minimale
-    -a 2 : Position à h vers le centre articulaire
+    -a 0 : Orientation phi constante (IK "directe" + choix de p minimal)
+    -a 1 : Suivi Jacobien (sans évitement)
+    -a 2 : Suivi Jacobien + évitement vers le centre des limites (nullspace)
+Convention: PRRR = [p, t1, t2, t3]
+- p : joint prismatique (translation le long de +x du monde)
+- t1,t2,t3 : joints rotatifs
 Version 1.0
 """
 import numpy as np
 
-# Cinématique direct: Position des 4 points
-def forward_all(q, L, base):
-    x_base, y_base = base
-    d0, t1, t2, t3 = q
-
-    # base mobile
-    x0 = x_base + d0
-    y0 = y_base
-
-    # lien 1
-    x1 = x0 + L[0]*np.cos(t1)
-    y1 = y0 + L[0]*np.sin(t1)
-    # lien 2
-    x2 = x1 + L[1]*np.cos(t1+t2)
-    y2 = y1 + L[1]*np.sin(t1+t2)
-    # lien 3
-    x3 = x2 + L[2]*np.cos(t1+t2+t3)
-    y3 = y2 + L[2]*np.sin(t1+t2+t3)
-
-    return np.array([[x0, y0], [x1, y1], [x2, y2], [x3, y3]])
-
-# Cinématique directe : Bout seulement
-def forward(q, L, base):
-    return forward_all(q, L, base)[-1]
-
-# Construire la matrice Jacobienne 2x4
-def jacobian(q, L):
-    d0, t1, t2, t3 = q
+# ===== Cinématique directe: Position des 5 points (base, après P, puis 3 articulations) =====
+def forward_all(theta, L, base):
+    x0, y0 = base
+    p, t1, t2, t3 = theta
     l1, l2, l3 = L
-    s1, c1 = np.sin(t1), np.cos(t1)
-    s12, c12 = np.sin(t1+t2), np.cos(t1+t2)
-    s123, c123 = np.sin(t1+t2+t3), np.cos(t1+t2+t3)
 
-    J = np.zeros((2,4))
+    # point après prisme (translation en x)
+    xP = x0 + p
+    yP = y0
 
-    # Joint P (translation)
-    J[0,0] = 1.0
-    J[1,0] = 0.0
+    x1 = xP + l1 * np.cos(t1)
+    y1 = yP + l1 * np.sin(t1)
 
-    # Joint R1
-    J[0,1] = -l1*s1 - l2*s12 - l3*s123
-    J[1,1] =  l1*c1 + l2*c12 + l3*c123
+    x2 = x1 + l2 * np.cos(t1 + t2)
+    y2 = y1 + l2 * np.sin(t1 + t2)
 
-    # Joint R2
-    J[0,2] = -l2*s12 - l3*s123
-    J[1,2] =  l2*c12 + l3*c123
+    x3 = x2 + l3 * np.cos(t1 + t2 + t3)
+    y3 = y2 + l3 * np.sin(t1 + t2 + t3)
 
-    # Joint R3
-    J[0,3] = -l3*s123
-    J[1,3] =  l3*c123
+    # [base] -> [après P] -> [après R1] -> [après R2] -> [effecteur]
+    return np.array([[x0, y0], [xP, yP], [x1, y1], [x2, y2], [x3, y3]])
+
+def forward(theta, L, base):
+    return forward_all(theta, L, base)[-1]
+
+# ===== Jacobienne 2x4 (x,y) par rapport à [p,t1,t2,t3] =====
+def jacobian(theta, L):
+    p, t1, t2, t3 = theta
+    l1, l2, l3 = L
+
+    s1,  c1  = np.sin(t1),          np.cos(t1)
+    s12, c12 = np.sin(t1 + t2),     np.cos(t1 + t2)
+    s123,c123= np.sin(t1 + t2 + t3),np.cos(t1 + t2 + t3)
+
+    J = np.zeros((2, 4))
+
+    # d(x,y)/dp : prisme le long de x monde
+    J[0, 0] = 1.0
+    J[1, 0] = 0.0
+
+    # colonnes RRR identiques au cas 3R
+    J[0, 1] = -l1*s1  - l2*s12  - l3*s123
+    J[0, 2] =          - l2*s12  - l3*s123
+    J[0, 3] =                    - l3*s123
+
+    J[1, 1] =  l1*c1  + l2*c12  + l3*c123
+    J[1, 2] =           l2*c12  + l3*c123
+    J[1, 3] =                     l3*c123
 
     return J
 
-# Mise à jour avec respect des limites
-def update_with_limits(q, dq, dt, limits):
-    new = q + dt*dq
+# ===== Limites =====
+def update_with_limits(theta, dtheta, dt, limits):
+    new = np.array(theta, dtype=float) + dt * np.array(dtheta, dtype=float)
     for j in range(4):
-        new[j] = np.clip(new[j], limits[j,0], limits[j,1])
+        new[j] = np.clip(new[j], limits[j, 0], limits[j, 1])
     return new
 
-def hit_limit(q, limits):
-    return np.any((q <= limits[:,0]) | (q >= limits[:,1]))
+def hit_limit(theta, limits):
+    th = np.array(theta, dtype=float)
+    return np.any((th <= limits[:, 0]) | (th >= limits[:, 1]))
 
-# Cinématique inverse (PRRR)
-def inverse_PRRR(pf, phi, L, base, d0=0):
-    # Calculer IK des 3 rotatifs
+# ===== IK (simplifiée) à orientation constante phi =====
+def inverse(pf, phi, L, base, p_limits=None):
+    """
+    Retourne [p, t1, t2, t3] pour atteindre pf avec orientation phi.
+    On choisit p (translation en x) "minimal" (|p| petit) tout en rendant l'IK 2R réalisable.
+    """
     x0, y0 = base
-    theta1, theta2, theta3 = inverse_RRR(pf, phi, L, base)
-    # Ajouter d0 en premier
-    return [d0, theta1, theta2, theta3]
+    l1, l2, l3 = L
 
-# Ancienne inverse RRR utilisée à l’intérieur
-def inverse_RRR(pf, phi, L, base):
-    x0, y0 = base    
-    L1, L2, L3 = L
-    
-    # calcul du poignet
-    wx = pf[0] - L3 * np.cos(phi) - x0
-    wy = pf[1] - L3 * np.sin(phi) - y0
+    # position du "poignet" (avant le dernier lien l3) en monde
+    wxw = pf[0] - l3 * np.cos(phi)
+    wyw = pf[1] - l3 * np.sin(phi)
 
-    # IK 2R pour atteindre le poignet
-    D = (wx**2 + wy**2 - L1**2 - L2**2) / (2*L1*L2)
-    D = np.clip(D, -1.0, 1.0)
+    dy = wyw - y0
+    rmin = abs(l1 - l2)
+    rmax = (l1 + l2)
 
-    theta2 = np.arctan2(np.sqrt(1 - D**2), D)
+    # condition minimale: |dy| <= rmax sinon impossible même en bougeant p
+    if abs(dy) > rmax + 1e-12:
+        raise ValueError("IK impossible: cible trop loin en y (|dy| > L1+L2).")
 
-    k1 = L1 + L2 * np.cos(theta2)
-    k2 = L2 * np.sin(theta2)
-    theta1 = np.arctan2(wy, wx) - np.arctan2(k2, k1)
+    # dx = (wxw - (x0+p)) ; on peut choisir p pour rendre r dans [rmin, rmax]
+    dx0 = wxw - x0  # correspond à p=0
 
-    # angle du dernier lien
-    theta3 = phi - theta1 - theta2
-    return [theta1, theta2, theta3]
+    # dx^2 doit être dans [rmin^2 - dy^2, rmax^2 - dy^2]
+    lo2 = max(0.0, rmin**2 - dy**2)
+    hi2 = max(0.0, rmax**2 - dy**2)
 
-# Atteindre pf à partir de theta selon 3 stratégies (a = 0, 1 ou 2)
-def Reach_PRRR(pf, q, L, base, dt, limits, a, phi=0, d0_fixed=None):
-    n, e, d = 25, 1, 0.75
-    q_mid = np.array([ (lim[0]+lim[1])/2 for lim in limits ])
-    q_rng = np.array([ 1/(lim[1]-lim[0]) if lim[1]-lim[0] != 0 else 1.0 for lim in limits ])
-    I = np.eye(4)
-    W = 2.0*np.diag(q_rng)
+    dx_lo = np.sqrt(lo2)
+    dx_hi = np.sqrt(hi2)
 
-    if a==0:
-        q = inverse_PRRR(pf, phi, L, base, d0_fixed if d0_fixed is not None else 0)
+    # Choisir dx le plus proche de dx0 mais avec |dx| dans [dx_lo, dx_hi]
+    abs_dx0 = abs(dx0)
+    if abs_dx0 < dx_lo:
+        abs_dx = dx_lo
+    elif abs_dx0 > dx_hi:
+        abs_dx = dx_hi
     else:
-        p = forward(q, L, base)
-        while n>0 and e>0.00001:
-            dp = d*(pf - p)/dt
-            J = jacobian(q, L)
-            J_pinv = np.linalg.pinv(J)
-            dq = J_pinv @ dp
+        abs_dx = abs_dx0
 
-            if d0_fixed is not None:
-                dq[0] = 0  # verrouiller le rail si nécessaire
+    sign = 1.0 if dx0 >= 0 else -1.0
+    dx = sign * abs_dx
 
-            if a==2:
-                h = W @ (q_mid - q)
-                dq2 = d*(I - J_pinv @ J) @ h
-                dq = dq + dq2
+    # donc p = dx0 - dx
+    p = dx0 - dx
 
-            q = update_with_limits(q, dq, dt, limits)
-            p = forward(q, L, base)
-            e = np.linalg.norm(pf - p)
+    if p_limits is not None:
+        p = float(np.clip(p, p_limits[0], p_limits[1]))
+        # recompute dx with clipped p
+        dx = wxw - (x0 + p)
+
+    # maintenant IK 2R sur le poignet avec base (x0+p, y0)
+    D = (dx**2 + dy**2 - l1**2 - l2**2) / (2.0 * l1 * l2)
+    D = float(np.clip(D, -1.0, 1.0))  # robustesse numérique
+
+    t2 = np.arctan2(np.sqrt(1.0 - D**2), D)  # "coude haut"
+    k1 = l1 + l2 * np.cos(t2)
+    k2 = l2 * np.sin(t2)
+    t1 = np.arctan2(dy, dx) - np.arctan2(k2, k1)
+
+    t3 = phi - t1 - t2
+    return [p, t1, t2, t3]
+
+# ===== Reach: atteindre pf à partir de theta selon 3 stratégies =====
+def Reach(pf, theta, L, base, dt, limits, a, phi=0.0):
+    n, e, d = 25, 1.0, 0.75
+
+    theta = np.array(theta, dtype=float)
+    limits = np.array(limits, dtype=float)
+
+    theta_mid = np.array([(lim[0] + lim[1]) / 2.0 for lim in limits])
+    theta_rng = np.array([1.0 / (lim[1] - lim[0]) for lim in limits])
+
+    I = np.eye(4)
+    W = 2.0 * np.diag(theta_rng)
+
+    if a == 0:
+        # IK orientation constante phi + choix p minimal
+        p_limits = limits[0]
+        theta = np.array(inverse(pf, phi, L, base, p_limits=p_limits), dtype=float)
+        # respecter aussi les limites des angles
+        for j in range(4):
+            theta[j] = np.clip(theta[j], limits[j, 0], limits[j, 1])
+    else:
+        # suivi Jacobien
+        p = forward(theta, L, base)
+        while n > 0 and e > 1e-5:
+            dp = d * (np.array(pf, dtype=float) - p) / dt
+            J = jacobian(theta, L)
+            J_pinv = np.linalg.pinv(J)  # 4x2
+            dtheta = J_pinv @ dp
+
+            if a == 2:
+                h = W @ (theta_mid - theta)
+                dtheta2 = d * (I - J_pinv @ J) @ h
+                dtheta = dtheta + dtheta2
+
+            theta = update_with_limits(theta, dtheta, dt, limits)
+            p = forward(theta, L, base)
+            e = np.linalg.norm(np.array(pf, dtype=float) - p)
             n -= 1
 
-    return q
+    return theta
