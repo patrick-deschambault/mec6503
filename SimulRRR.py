@@ -32,7 +32,7 @@ except Exception as e:
     print(f"❌ Erreur de lecture de la configuration robot: {args.par}: {e}")
     sys.exit(1)
 
-if len(par) < 23:
+if len(par) < 26:
     print(f"❌ Fichier {args.par} ne contient pas suffisament de paramètres (≥23).")
     sys.exit(1)
    
@@ -41,17 +41,22 @@ L = par[0:3]
 xmin, xmax = par[3:5]
 ymin, ymax = par[5:7]
 base     = par[7:9]
-t_dep  = par[9:12].reshape(3)
-limits = par[12:18].reshape(3,2)
-xwall = par[18:20]
-ywall = par[20:22]
-dt   = int(par[22])
+
+t_dep  = par[9:13].reshape(4) 
+limits = par[13:21].reshape(4,2)
+
+xwall = par[21:23]
+ywall = par[23:25]
+dt   = int(par[25])
+
 print(f"✅ Robot configuration {args.par} loaded.")
 if args.debug:
-    print(f"L1={L1}, L2={L2}, L3={L3}")
-    print(f"x0={x0}, y0={y0}")   
-    print(f"xwall[0]={xwall[0]}, ywall[0]={ywall[0]}")
-    print(f"xwall[1]={xwall[1]}, ywall[1]={ywall[1]}")
+    print("L =", L)
+    print("base =", base)
+    print("q_dep =", t_dep)
+    print("limits=\n", limits)
+    print("xwall =", xwall, "ywall =", ywall)
+    print("dt(ms) =", dt)
 
 # ==== Lecture trajectoire (.trj) ====
 try:
@@ -60,8 +65,8 @@ except Exception as e:
     print(f"❌ Erreur de lecture de la trajectoire {args.traj}: {e}")
     sys.exit(1)
 
-if traj.ndim != 2 or traj.shape[1] != 3:
-    print(f"❌ Trajectoire {args.traj} doit avoir 3 colonnes (theta1, theta2, theta3).")
+if traj.ndim != 2 or traj.shape[1] != 4:
+    print(f"❌ Trajectoire {args.traj} doit avoir 4 colonnes (d, theta1, theta2, theta3).")
     sys.exit(1)
 
 traj_len = len(traj)
@@ -90,7 +95,8 @@ def update(frame):       # Répétition de l'animation
     # Vérification des limites articulaires
     if not (limits[0][0] < theta[0] < limits[0][1] and
             limits[1][0] < theta[1] < limits[1][1] and
-            limits[2][0] < theta[2] < limits[2][1]):
+            limits[2][0] < theta[2] < limits[2][1] and
+            limits[3][0] < theta[3] < limits[3][1]):
         arm.set_color("red")   # At+Hors limits -> Rouge
     else:
         arm.set_color("blue")  # Normal -> Bleu
