@@ -17,42 +17,60 @@ import argparse
 import sys
 
 # Cinématique direct: Position des 4 points
-def forward_all(theta, L, base):
+def forward_all(q, L, base):
     x0, y0 = base
-    t1, t2, t3 = theta
-    x1 = x0 + L[0]*np.cos(t1)
-    y1 = y0 + L[0]*np.sin(t1)
-    x2 = x1 + L[1]*np.cos(t1+t2)
-    y2 = y1 + L[1]*np.sin(t1+t2)
-    x3 = x2 + L[2]*np.cos(t1+t2+t3)
-    y3 = y2 + L[2]*np.sin(t1+t2+t3)
-    return np.array([[x0,y0],[x1,y1],[x2,y2],[x3,y3]])
+    d, q1, q2, q3 = q
+    
+    L1, L2, L3 = L
+    
+    # On suppose ici que d ne s'applique qu'en x (pour l'instant).
+    x0_p = x0 + d
+    y0_p = y0
+    
+    # Bout du lien 1, on doit offset les coordonnees prismatique ici.
+    x1 = x0_p + L1*np.cos(q1)
+    y1 = y0_p + L1*np.sin(q1)
+    
+    x2 = x1 + L2*np.cos(q1+q2)
+    y2 = y1 + L2*np.sin(q1+q2)
+    
+    x3 = x2 + L3*np.cos(q1+q2+q3)
+    y3 = y2 + L3*np.sin(q1+q2+q3)
+    
+    return np.array([[x0_p,y0_p],[x1,y1],[x2,y2],[x3,y3]])
 
 # Cinématique direct: Position du bout seulement
-def forward(theta, L, base):
-    return forward_all(theta, L, base)[-1]
+def forward(q, L, base):
+    return forward_all(q, L, base)[-1]
 
 # Construire la matrice Jacobienne 2x3
-def jacobian(theta, L):
-    t1, t2, t3 = theta
+def jacobian(q, L):
+    d, q1, q2, q3 = q
     l1, l2, l3 = L
-    s1, c1 = np.sin(t1), np.cos(t1)
-    s12, c12 = np.sin(t1+t2), np.cos(t1+t2)
-    s123, c123 = np.sin(t1+t2+t3), np.cos(t1+t2+t3)
+    
+    s1, c1 = np.sin(q1), np.cos(q1)
+    s12, c12 = np.sin(q1+q2), np.cos(q1+q2)
+    s123, c123 = np.sin(q1+q2+q3), np.cos(q1+q2+q3)
 
-    J = np.zeros((2,3))
-    J[0,0] = -l1*s1 - l2*s12 - l3*s123
-    J[0,1] = -l2*s12 - l3*s123
-    J[0,2] = -l3*s123
-    J[1,0] =  l1*c1 + l2*c12 + l3*c123
-    J[1,1] =  l2*c12 + l3*c123
-    J[1,2] =  l3*c123
+    J = np.zeros((2,4))
+    
+    # La contribution est d'ajouter cette colonne uniquement.
+    J[0,0] = 1.0
+    J[1,0] = 0.0
+    
+    J[0,1] = -l1*s1 - l2*s12 - l3*s123
+    J[0,2] = -l2*s12 - l3*s123
+    J[0,3] = -l3*s123
+    
+    J[1,1] =  l1*c1 + l2*c12 + l3*c123
+    J[1,2] =  l2*c12 + l3*c123
+    J[1,3] =  l3*c123
     return J
 
 # Mise à jour avec respect des limites
 def update_with_limits(theta, dtheta, dt, limits):
     new = theta + dt*dtheta
-    for j in range(3):
+    for j in range(4):
         new[j] = np.clip(new[j], limits[j,0], limits[j,1])
     return new
 
@@ -90,11 +108,11 @@ def Reach(pf,theta,L,base,dt,limits,a,phi=0):
     W = 2.0*np.diag(theta_rng)
 
     if a==0:  # Cinématique inverse à orientation constante phi
-        theta = inverse(pf,phi,L,base)
+        theta = inverse(pf,phi,L,base) # TODO
     else:     # Petit déplacements avec la Jacobienne
         p = forward(theta, L, base)
         while n>0 and e>0.00001:
-            dp = d*(pf - p) / dt
+            dp = d*(pf - p) / dt # Position controlée. On impose une vitesse cartésienne vers le point désiré.
             J = jacobian(theta, L)
             J_pinv = np.linalg.pinv(J)
             dtheta = J_pinv @ dp  # Suivre le trajet sans évitement
