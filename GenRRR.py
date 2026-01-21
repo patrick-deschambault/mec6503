@@ -37,11 +37,11 @@ if len(par) < 23:
     print(f"❌ Fichier configuration {args.param} incomplet (attendu ≥23).")
     sys.exit(1)
 
-L = par[0:3]
-base = par[7:9]
-t_dep = par[9:12].reshape(3)
-limits = par[12:18].reshape(3,2)
-dt   = par[22]/1000
+L = par[0:3] # L1 L2 L3
+base = par[7:9] 
+t_dep = par[9:13].reshape(4) # d, q1, q2, q3
+limits = par[13:21].reshape(4,2) # limits for d, q1, q2, q3
+dt   = par[22]/1000 # Convert ms to s
 print(f"✅ Configuration {args.param} à {len(par)} paramètres chargée.")
 if args.debug: print("par=", par)
 
@@ -63,7 +63,7 @@ print(f"✅ Trajectoire {fichier_xy} à {len(waypoints)} points chargée.")
 if args.debug: print("waypoints=", waypoints)
         
 # ==== État initial ====
-vmax, pas = 50.0, 20
+vmax, pas = 1.0, 20 # Vitesse modifiée
 theta = t_dep
 q_list = [theta.copy()]
 p_current = robot.forward(theta, L, base)
