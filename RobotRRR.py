@@ -79,32 +79,35 @@ def hit_limit(theta, limits):
 
 
 # Cinématique inverse (simplifiée)
-def inverse(pf, phi, L, base):
-    x0, y0 = base    
+def inverse(pf, phi, L, base, p_limits=(-1,1)):
+    x0, y0 = base
     L1, L2, L3 = L
-    
-    # calcul du poignet
-    wx = pf[0] - L3 * np.cos(phi) - x0
-    wy = pf[1] - L3 * np.sin(phi) - y0
 
-    # IK 2R pour atteindre le poignet
+    wxw = pf[0] - L3*np.cos(phi)
+    wyw = pf[1] - L3*np.sin(phi)
+
+    p = np.clip(wxw - x0, p_limits[0], p_limits[1])
+
+    wx = wxw - (x0 + p)
+    wy = wyw - y0
+
     D = (wx**2 + wy**2 - L1**2 - L2**2) / (2*L1*L2)
-    theta2 = np.arctan2(np.sqrt(1 - D**2), D)
+    D = np.clip(D, -1.0, 1.0)
+    t2 = np.arctan2(np.sqrt(1 - D**2), D)
 
-    k1 = L1 + L2 * np.cos(theta2)
-    k2 = L2 * np.sin(theta2)
-    theta1 = np.arctan2(wy, wx) - np.arctan2(k2, k1)
+    k1 = L1 + L2*np.cos(t2)
+    k2 = L2*np.sin(t2)
+    t1 = np.arctan2(wy, wx) - np.arctan2(k2, k1)
 
-    # angle du dernier lien
-    theta3 = phi - theta1 - theta2
-    return [theta1, theta2, theta3]
+    t3 = phi - t1 - t2
+    return [p, t1, t2, t3]
 
 # Atteindre pf à partir de theta selon 3 stratégies (a = 0, 1 ou 2)
 def Reach(pf,theta,L,base,dt,limits,a,phi=0):
     n, e, d = 25, 1, 0.75
     theta_mid = np.array([ (lim[0]+lim[1])/2 for lim in limits ])
     theta_rng = np.array([ 1/(lim[1]-lim[0]) for lim in limits ])
-    I = np.eye(3)
+    I = np.eye(4)
     W = 2.0*np.diag(theta_rng)
 
     if a==0:  # Cinématique inverse à orientation constante phi
