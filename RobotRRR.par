@@ -13,8 +13,8 @@
  0.757079 # t1_dep  : Position départ de theta1
  0.757079 # t2_dep  : Position départ de theta2
  0.757079 # t3_dep  : Position départ de theta3
--0.5      # d1_min  : Limite minimale de d1
- 0.5      # d1_max  : Limite maximale de d1
+-1.0      # d1_min  : Limite minimale de d1
+ 1.0      # d1_max  : Limite maximale de d1
  0.0      # t1_min  : Limite minimale de theta1
  1.570796 # t1_max  : Limite maximale de theta1
  0.0      # t2_min  : Limite minimale de theta2
