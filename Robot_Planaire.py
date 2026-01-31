@@ -60,9 +60,10 @@ jac_func = sp.lambdify((d, q1, q2, q3, L1, L2, L3, x0, y0), J, 'numpy')
 
 # 5. Évaluer les fonctions à des valeurs numériques spécifiques
 # afin de valider les équations de position et la Jacobienne
-q_vals = [0.1, np.pi/2, -np.pi/2, np.pi/2]  # Distance du joint prismatique avec les Angles en radian
-l_vals = [2.0, 1.5, 1.5]                    # Longueur en m pour L1, L2 et L3
-base_vals = [0.0, 0.0]  # Position de la base x0, y0
+# Les angles utilisées ici sont 30, -20, 10 degrés
+q_vals = [0.1, 0.523599, -0.349066, 0.174533]  # Distance du joint prismatique avec les Angles en radian
+l_vals = [0.40, 0.30, 0.20]                    # Longueur en m pour L1, L2 et L3
+base_vals = [0.0, 0.0]                         # Position de la base x0, y0
 
 # Utiliser l'opérateur * pour déballer les listes en arguments
 current_pos = pos_func(*q_vals, *l_vals, *base_vals)
