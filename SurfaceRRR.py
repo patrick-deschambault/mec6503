@@ -26,7 +26,7 @@ def SelfMotionPoint(theta0, pf, L, base, limits,
 
     theta = theta0.copy()
     traj = [theta.copy()]
-    I = np.eye(3)
+    I = np.eye(4)
 
     # direction vers limite haute ou basse
     target = limits[:,1] if direction == 1 else limits[:,0]
@@ -65,11 +65,11 @@ if __name__ == "__main__":
     print("SurfaceRRR: Version 2.0")
     
     # Charger RobotRRR.par
-    par = np.loadtxt("RobotRRR.par")
-    L = par[0:3]
+    par = np.loadtxt("RobotRRR.par")    
+    L = par[0:3] # L1 L2 L3
     base = par[7:9]
-    theta_start = par[9:12]
-    limits = par[12:18].reshape(3,2)
+    theta_start = par[9:13].reshape(4) # d, q1, q2, q3
+    limits = par[13:21].reshape(4,2) # limits for d, q1, q2, q3
     dt = 0.05 	# par[22] / 1000
 
     # Charger deux waypoints
